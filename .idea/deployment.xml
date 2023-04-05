@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="Ubuntu22.04 (98a69a54-6ab6-42b6-b1aa-fa13b4727eca)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/hgfs/CodeBase/CD2212/WeChat" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-ubuntu2204" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-ubuntu2204" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>

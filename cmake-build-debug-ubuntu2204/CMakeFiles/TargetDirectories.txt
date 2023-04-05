@@ -1,0 +1,3 @@
+/mnt/hgfs/CodeBase/CD2212/WeChat/cmake-build-debug-ubuntu2204/CMakeFiles/WeChat.dir
+/mnt/hgfs/CodeBase/CD2212/WeChat/cmake-build-debug-ubuntu2204/CMakeFiles/edit_cache.dir
+/mnt/hgfs/CodeBase/CD2212/WeChat/cmake-build-debug-ubuntu2204/CMakeFiles/rebuild_cache.dir
