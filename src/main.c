@@ -9,9 +9,6 @@ int main(int argc, char* argv[])
     Line* online = onlineInit();
     //加载用户信息。将本地信息导入到程序
     loadInfo(local);
-    //初始化广播地址
-    broadcastInit(online);
-
 
     // 显示菜单
     while (1)
@@ -103,16 +100,4 @@ node* linklistFind(node* local, node* target)
         pos = pos->next;
     }
     return NULL;
-}
-
-//初始化头节点为广播地址
-int broadcastInit(Line* online)
-{
-    //初始化广播名
-    sprintf(online->name, "BROADCAST");
-    //初始化广播地址IPV4结构体
-    online->userIP.sin_port = 50000;
-    online->userIP.sin_family = AF_INET;
-    online->userIP.sin_addr.s_addr = inet_addr("192.168.255.255");
-    return 0;
 }

@@ -28,13 +28,13 @@ void userSignup(node* local);
 // 初始化节点
 node* userInit(void);
 //用户面板
-void* userPanel(void* head);
+void* userPanel(Line* head, node* user);
 //初始化在线信息
 Line* onlineInit(void);
 
 // 接收别的主机上线的广播，一直接收，服务器
 void* rcv_broadcast(void* head);
 // 发送广播
-void* send_broadcast(void* arg);
+void* send_broadcast(void* user);
 
 #endif

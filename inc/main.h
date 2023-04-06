@@ -21,7 +21,6 @@ void linklistAdd(node* local, node* new);
 node* linklistFind(node* local, node* target);
 // 加载用户信息
 void loadInfo(node* local);
-//初始化头节点为广播地址
-int broadcastInit(Line* online);
+
 
 #endif
