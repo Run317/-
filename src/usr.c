@@ -97,6 +97,7 @@ int userLogin(node* local, Line* online)
 
     //创建线程用于接受数据
     pthread_create(&rcv_pid, NULL, rcv_broadcast, (void*)online);
+    sleep(1);
     printf("登陆成功！\n");
 
     userPanel(online, user);
@@ -136,7 +137,7 @@ void* send_broadcast(void* user)
     struct sockaddr_in client_addr;
     int addr_size = sizeof(client_addr);
     // 接收对方回传的信息
-    sleep(1);
+    usleep(1);
     sendto(client_socket, w_buf, strlen(w_buf) + 1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
 }
@@ -186,14 +187,23 @@ void* rcv_broadcast(void* head)
         // 循环一直接收
         int ret = recvfrom(server_socket, r_buf, 1024, 0, (struct sockaddr*)&client_addr, &addr_size);
         // 链表没有才插入，插入链表
-        //        printf("[%s][%d]:%s\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port, r_buf);
+
         //新建节点插入链表
         Line* newUser = onlineInit();
         newUser->userIP = client_addr;
         sscanf(r_buf, "%[^ ]", newUser->name);
+        //打印用户上线提醒,屏蔽本机信息
+        if (newUser->userIP.sin_port != client_addr.sin_port)
+        {
+            printf("[%s][%d]:%s\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port, r_buf);
+        }
         //修改指针指向
-        newUser->next = onlineHead->next;
-        onlineHead->next = newUser;
+        Line* tail = onlineHead;
+        while (tail->next != NULL)
+        {
+            tail = tail->next;
+        }
+        tail->next = newUser;
         //遍历链表
         Line* pos = onlineHead->next;
         while (pos != NULL)
@@ -205,24 +215,36 @@ void* rcv_broadcast(void* head)
 }
 
 //用户面板
-void* userPanel(Line* head, node* user)
+int userPanel(Line* head, node* user)
 {
-    //    Line* user = (Line* )head;
-    printf("***************USER-PANEL*************\n");
-    printf("当前用户:%s\n", user->name);
-    printf("1.单独发送消息        2.群发消息\n");
-    printf("3.单独发送文件        4.群发文件\n");
-    printf("5.下线\n");
-
-    printf("****************END-LINE**************\n");
-
-    int panelCmd = 0;
-    scanf("%d", &panelCmd);
     while (1)
     {
+        printf("***************USER-PANEL*************\n");
+        printf("当前用户:%s\n", user->name);
+        printf("1.单独发送消息        2.群发消息\n");
+        printf("3.单独发送文件        4.群发文件\n");
+        printf("5.下线\n");
+        printf("****************END-LINE**************\n");
+        //查找该用户对应在线链表节点
+        Line* pos = head;
+        while (pos != NULL)
+        {
+            if (strcmp(user->name, pos->name) == 0)
+            {
+                break;
+            }
+            pos = pos->next;
+        }
+        //创建线程接收消息
+        //    pthread_t rcv_pid;
+        //    pthread_create(&rcv_pid, NULL, rcvMsg, (void*)pos);
+
+        int panelCmd = 0;
+        scanf("%d", &panelCmd);
         switch (panelCmd)
         {
         case 1:
+            sendIndividually(head);
             break;
         case 2:
             break;
@@ -231,10 +253,98 @@ void* userPanel(Line* head, node* user)
         case 4:
             break;
         case 5:
-            break;
+            return 0;
         default:
             printf("请输入正确指令~\n");
-
         }
+    }
+}
+
+//单独发送
+void sendIndividually(Line* head)
+{
+    //显示在线列表
+    //打印表头
+    printf("用户名\t IP\t 端口\n");
+    //遍历链表
+    Line* pos = head->next;
+    while (pos != NULL)
+    {
+        printf("%s\t %s\t %d\n", pos->name, inet_ntoa(pos->userIP.sin_addr), pos->userIP.sin_port);
+        pos = pos->next;
+    }
+    //发送消息
+    while (1)
+    {
+        printf("请输入发送对象用户名\n");
+        printf("输入“cancel”取消发送\n");
+        char name[32];
+        bzero(name, sizeof(name));
+        scanf("%s", name);
+        if (strcmp(name, "cancel") == 0)
+        {
+            break;
+        }
+        int findFlag = 0;
+        Line* find = head;
+        while (find != NULL)
+        {
+            if (strcmp(find->name, name) == 0)
+            {
+                findFlag = 1;
+                break;
+            }
+            find = find->next;
+        }
+        if (findFlag == 0)
+        {
+            printf("没有该用户\n");
+        }
+        if (findFlag == 1)
+        {
+            int sendSocket = socket(AF_INET, SOCK_DGRAM, 0);
+            if (sendSocket == -1)
+            {
+                perror("sendIndividually socket failed");
+            }
+            char msg[1024];
+            while (1)
+            {
+                bzero(msg, sizeof (msg));
+                scanf("%[^n]", msg);
+                while (getchar() != '\n');
+                if (strcmp(msg, "exit") == 0)
+                {
+                    break;
+                }
+                sendto(sendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&find->userIP, sizeof (find->userIP));
+            }
+        }
+    }
+}
+
+//接收信息
+void* rcvMsg(void* user)
+{
+    Line* rcv = (Line*)user;
+    int rcvSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (rcvSocket == -1)
+    {
+        perror("rcvMsg socket failed");
+        return NULL;
+    }
+
+    if (bind(rcvSocket, (struct sockaddr*)&rcv->userIP, sizeof (rcv->userIP)))
+    {
+        perror("rcvMsg bind failed");
+        return NULL;
+    }
+    char msg[1024];
+    int addrSize = sizeof (rcv->userIP);
+    while (1)
+    {
+        bzero(msg, sizeof (msg));
+        recvfrom(rcvSocket, msg, 1024, 0, (struct sockaddr*)&rcv->userIP, &addrSize);
+        printf("%s:%s\n", rcv->name, msg);
     }
 }

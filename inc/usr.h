@@ -28,7 +28,7 @@ void userSignup(node* local);
 // 初始化节点
 node* userInit(void);
 //用户面板
-void* userPanel(Line* head, node* user);
+int userPanel(Line* head, node* user);
 //初始化在线信息
 Line* onlineInit(void);
 
@@ -36,5 +36,10 @@ Line* onlineInit(void);
 void* rcv_broadcast(void* head);
 // 发送广播
 void* send_broadcast(void* user);
+//接收信息
+void* rcvMsg(void* user);
+
+//单独发送
+void sendIndividually(Line* head);
 
 #endif
