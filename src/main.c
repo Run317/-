@@ -40,9 +40,9 @@ void menu(void)
     printf("****************************************************\n");
     printf("*                      WeChat                      *\n");
     printf("*                                                  *\n");
-    printf("*                      1.登录                       *\n");
-    printf("*                      2.注册                       *\n");
-    printf("*                      9.退出                       *\n");
+    printf("*                      1.登录                      *\n");
+    printf("*                      2.注册                      *\n");
+    printf("*                      9.退出                      *\n");
     printf("*                                                  *\n");
     printf("****************************************************\n");
 }
@@ -57,30 +57,53 @@ void loadInfo(node* local)
         perror("loading info failed");
         return;
     }
-
+    int flag = 0;
     while (!feof(fp))
     {
         node* pos = userInit();
         fscanf(fp, "%s %s\n", pos->name, pos->password);
-        linklistAdd(local, pos);
+        node* repeat = local;
+        while (repeat->next != NULL)
+        {
+            flag = 0;
+            if (strcmp(pos->name, repeat->name) == 0)
+            {
+                flag = 1;
+                break;
+            }
+            repeat = repeat->next;
+        }
+        if (flag == 0)
+        {
+            linklistAdd(local, pos);
+        }
+        if (flag == 1)
+        {
+            continue;
+        }
     }
-
-    fclose(fp);
+    //================导入链表检测===================
+    //    node* pos1 = local->next;
+    //    while (pos1 != NULL)
+    //    {
+    //        printf("%s,%s\n", pos1->name, pos1->password);
+    //        pos1 = pos1->next;
+    //    }
+    //=============================================
+    {
+        fclose(fp);
+    }
 }
 
 // 将数据尾插到链表
 void linklistAdd(node* local, node* new)
 {
-    if (local->next != NULL)
+    node* pos = local;
+    while (pos->next != NULL)
     {
-        node* pos = local->next;
-        while (pos->next != NULL)
-        {
-            pos = pos->next;
-        }
-        pos->next = new;
+        pos = pos->next;
     }
-    local->next = new;
+    pos->next = new;
 }
 
 // 查找结点
