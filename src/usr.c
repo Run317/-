@@ -1,6 +1,9 @@
 #include "usr.h"
 #include "main.h"
 
+extern Line* onlineHead;
+Line* currentUser = NULL;
+
 // 初始化本地信息
 node* userInit(void)
 {
@@ -69,7 +72,7 @@ void userSignup(node* local)
 }
 
 // 用户登录
-int userLogin(node* local, Line* online)
+int userLogin(node* local)
 {
     //新建用户节点，存储用户信息，与本地信息比较
     node* new = userInit();
@@ -89,31 +92,23 @@ int userLogin(node* local, Line* online)
         printf("密码错误\n");
         return -2;
     }
-
-    pthread_t rcv_pid, snd_pid;
-
-    //创建线程用于发送数据
-    pthread_create(&snd_pid, NULL, send_broadcast, (void*)user);
-
-    //创建线程用于接受数据
-    pthread_create(&rcv_pid, NULL, rcv_broadcast, (void*)online);
-    sleep(1);
+    currentUser = onlineInit();
     printf("登陆成功！\n");
-
-    userPanel(online, user);
+    sprintf(currentUser->name, "%s", user->name);
+    userPanel(onlineHead, user);
+    return 0;
 }
 
 // 发送广播
-void* send_broadcast(void* user)
+int send_broadcast(char* msg)
 {
     usleep(1);
-    node* sender = (node*)user;
     // 创建套接字
     int client_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (client_socket == -1)
     {
         perror("socket");
-        return NULL;
+        return -1;
     }
 
     // 设置套接字    允许发送广播
@@ -121,32 +116,27 @@ void* send_broadcast(void* user)
     if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)))
     {
         perror("setsockopt");
-        return NULL;
+        return -2;
     }
 
     // 初始化对端地址结构体(server)
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;                                       // 地址族
-    server_addr.sin_port = 65535;                                           // 端口
+    server_addr.sin_port = htons(65535);                           // 端口
     server_addr.sin_addr.s_addr = inet_addr("255.255.255.255");         // IPV4 地址  (服务器的地址)
 
-    // 发送一条上线的信息
-    char w_buf[1024];
-    sprintf(w_buf, "%s Online!\n", sender->name);
-
-    struct sockaddr_in client_addr;
-    int addr_size = sizeof(client_addr);
     // 接收对方回传的信息
     usleep(1);
-    sendto(client_socket, w_buf, strlen(w_buf) + 1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    sendto(client_socket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
+    //关闭套接字
+    close(client_socket);
+    return 0;
 }
 
 // 接收别的主机上线的广播，一直接收，服务器
-void* rcv_broadcast(void* head)
+void* rcv_broadcast(void* arg)
 {
-    //在线列表头结点
-    Line* onlineHead = (Line* )head;
     // 创建套接字
     int server_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (server_socket == -1)
@@ -165,8 +155,7 @@ void* rcv_broadcast(void* head)
     // 初始化地址结构体
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET; // 地址族
-    server_addr.sin_port = 65535;	  // 端口
-    // server_addr.sin_addr.s_addr = inet_addr("192.168.1.204"); // IPV4 地址  (服务器的地址)
+    server_addr.sin_port = htons(65535);	  // 端口
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY "0.0.0.0"直接获取本机IP地址
 
     // 绑定地址
@@ -184,60 +173,85 @@ void* rcv_broadcast(void* head)
     while (1)
     {
         bzero(r_buf, 1024);
+        bzero(name, sizeof (name));
         // 循环一直接收
-        int ret = recvfrom(server_socket, r_buf, 1024, 0, (struct sockaddr*)&client_addr, &addr_size);
-        // 链表没有才插入，插入链表
-
+        recvfrom(server_socket, r_buf, 1024, 0, (struct sockaddr*)&client_addr, &addr_size);
         //新建节点插入链表
         Line* newUser = onlineInit();
         newUser->userIP = client_addr;
-        sscanf(r_buf, "%[^ ]", newUser->name);
+        sscanf(r_buf, "%[^ ]", name);
+        sprintf(newUser->name, "%s", name);
+        //判断广播信息是否是本机发送,如果是本机发送，将本机地址存到当前用户全局变量
+        if (strcmp(name, currentUser->name) == 0)
+        {
+            currentUser->userIP = client_addr;
+        }
         //打印用户上线提醒,屏蔽本机信息
-        if (newUser->userIP.sin_port != client_addr.sin_port)
+        if (strstr(r_buf, "Online") != NULL)
         {
-            printf("[%s][%d]:%s\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port, r_buf);
+            //如果接收到的不是本机的上线信息，回发本机在线信息
+            if (strstr(r_buf, currentUser->name) != NULL)
+            {
+                char onlineFlag[64];
+                bzero(onlineFlag, sizeof (onlineFlag));
+                sprintf(onlineFlag, "%s Online", currentUser->name);
+                send_broadcast(onlineFlag);
+            }
+            //检测在线用户链表中是否有该用户
+            if (onlineListAddCheck(name))
+            {
+                //如果没有该用户，且不是本机发送的消息，打印用户上线信息
+                if (strcmp(name, currentUser->name) != 0)
+                {
+                    printf("[%s][%d]:%s\n", inet_ntoa(newUser->userIP.sin_addr), newUser->userIP.sin_port, r_buf);
+                }
+                onlineListAdd(newUser);
+            }
         }
-        //修改指针指向
-        Line* tail = onlineHead;
-        while (tail->next != NULL)
+        //打印下线信息
+        if (strstr(r_buf, "Offline") != NULL)
         {
-            tail = tail->next;
+            if (strcmp(name, currentUser->name) != 0)
+            {
+                printf("%s\n", r_buf);
+            }
+            onlineListDel(name);
         }
-        tail->next = newUser;
-        //遍历链表
-        Line* pos = onlineHead->next;
-        while (pos != NULL)
-        {
-            printf("[%d][%s]:%s\n", pos->userIP.sin_port, inet_ntoa(client_addr.sin_addr), pos->name);
-            pos = pos->next;
-        }
+        //===================================检查在线链表========================================================
+        //        Line* pos = onlineHead->next;
+        //        while (pos != NULL)
+        //        {
+        //            printf("[%d][%s]:%s\n", pos->userIP.sin_port, inet_ntoa(client_addr.sin_addr), pos->name);
+        //            pos = pos->next;
+        //        }
+        //=====================================================================================================
     }
 }
 
 //用户面板
 int userPanel(Line* head, node* user)
 {
+    char msg[1024];
+    bzero(msg, sizeof(msg));
+    pthread_t rcvBroadcastPid;
+    //创建线程，接收广播
+    pthread_create(&rcvBroadcastPid, NULL, rcv_broadcast, NULL);
+    //发送上线广播
+    sprintf(msg, "%s Online", currentUser->name);
+    send_broadcast(msg);
+
     while (1)
     {
         printf("***************USER-PANEL*************\n");
-        printf("当前用户:%s\n", user->name);
+        printf("当前用户:%s\n", currentUser->name);
         printf("1.单独发送消息        2.群发消息\n");
         printf("3.单独发送文件        4.群发文件\n");
         printf("5.下线\n");
         printf("****************END-LINE**************\n");
-        //查找该用户对应在线链表节点
-        Line* pos = head;
-        while (pos != NULL)
-        {
-            if (strcmp(user->name, pos->name) == 0)
-            {
-                break;
-            }
-            pos = pos->next;
-        }
+
         //创建线程接收消息
-        //    pthread_t rcv_pid;
-        //    pthread_create(&rcv_pid, NULL, rcvMsg, (void*)pos);
+        pthread_t rcvMsgPid;
+        pthread_create(&rcvMsgPid, NULL, rcvMsg, NULL);
 
         int panelCmd = 0;
         scanf("%d", &panelCmd);
@@ -253,21 +267,27 @@ int userPanel(Line* head, node* user)
         case 4:
             break;
         case 5:
+            bzero(msg, sizeof(msg));
+            sprintf(msg, "%s Offline:[%s][%d]", currentUser->name, inet_ntoa(currentUser->userIP.sin_addr), currentUser->userIP.sin_port);
+            send_broadcast(msg);
+            usleep(10);
             return 0;
         default:
             printf("请输入正确指令~\n");
+            return -1;
         }
     }
+
 }
 
-//单独发送
-void sendIndividually(Line* head)
+//单独发送消息
+void sendIndividually(void* arg)
 {
     //显示在线列表
     //打印表头
     printf("用户名\t IP\t 端口\n");
     //遍历链表
-    Line* pos = head->next;
+    Line* pos = onlineHead->next;
     while (pos != NULL)
     {
         printf("%s\t %s\t %d\n", pos->name, inet_ntoa(pos->userIP.sin_addr), pos->userIP.sin_port);
@@ -285,66 +305,135 @@ void sendIndividually(Line* head)
         {
             break;
         }
-        int findFlag = 0;
-        Line* find = head;
-        while (find != NULL)
-        {
-            if (strcmp(find->name, name) == 0)
-            {
-                findFlag = 1;
-                break;
-            }
-            find = find->next;
-        }
-        if (findFlag == 0)
+        if (onlineListAddCheck(name)) //判断在线链表中是否有该用户
         {
             printf("没有该用户\n");
         }
-        if (findFlag == 1)
+        else
         {
+            //遍历链表，从链表中获取发送对象信息
+            Line* target = ConfirmRecipient(name);
             int sendSocket = socket(AF_INET, SOCK_DGRAM, 0);
             if (sendSocket == -1)
             {
                 perror("sendIndividually socket failed");
             }
             char msg[1024];
+            char buf[512];
+            printf("消息发送栏：\n");
             while (1)
             {
                 bzero(msg, sizeof (msg));
-                scanf("%[^n]", msg);
-                while (getchar() != '\n');
-                if (strcmp(msg, "exit") == 0)
+                bzero(buf, sizeof (buf));
+                scanf("%s", buf);
+                sprintf(msg, "%s :%s", currentUser->name, buf);
+                if (strstr(msg, "exit") != NULL)
                 {
-                    break;
+                    printf("退出成功\n");
+                    return;
                 }
-                sendto(sendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&find->userIP, sizeof (find->userIP));
+                sendto(sendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&target->userIP, sizeof (target->userIP));
             }
         }
     }
 }
 
-//接收信息
-void* rcvMsg(void* user)
+void sendMultiple(void)
 {
-    Line* rcv = (Line*)user;
+    char group[512];
+    bzero(group, sizeof (group));
+    printf("请输入发送对象，多个对象之间用“，”隔开例如”a，b，c“\n");
+}
+
+//接收信息
+void* rcvMsg(void* arg)
+{
     int rcvSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (rcvSocket == -1)
     {
         perror("rcvMsg socket failed");
         return NULL;
     }
+    int on = 1;
+    // 只要有绑定，设置套接字    允许重用地址和端口号
+    if (setsockopt(rcvSocket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
+    {
+        perror("rcvMsg setsockopt failed");
+        return NULL;
+    }
 
-    if (bind(rcvSocket, (struct sockaddr*)&rcv->userIP, sizeof (rcv->userIP)))
+    if (bind(rcvSocket, (struct sockaddr*)&currentUser->userIP, sizeof (currentUser->userIP)))
     {
         perror("rcvMsg bind failed");
         return NULL;
     }
+
     char msg[1024];
-    int addrSize = sizeof (rcv->userIP);
+    struct sockaddr_in senderAddr;
+    int addrSize = sizeof (senderAddr);
     while (1)
     {
         bzero(msg, sizeof (msg));
-        recvfrom(rcvSocket, msg, 1024, 0, (struct sockaddr*)&rcv->userIP, &addrSize);
-        printf("%s:%s\n", rcv->name, msg);
+        recvfrom(rcvSocket, msg, 1024, 0, (struct sockaddr*)&senderAddr, &addrSize);
+        printf("%s\n", msg);
     }
+}
+
+//在线链表删除节点
+void onlineListDel(char* name)
+{
+    Line* pos = onlineHead;
+    Line* del = pos->next;
+    while (del != NULL)
+    {
+        if (strcmp(del->name, name) == 0)
+        {
+            pos->next = del->next;
+            free(del);
+            break;
+        }
+        pos = pos->next;
+        del = pos->next;
+    }
+}
+
+//在线链表尾插
+void onlineListAdd(Line* new)
+{
+    Line* pos = onlineHead;
+    while ( pos->next != NULL)
+    {
+        pos = pos->next;
+    }
+    pos->next = new;
+}
+
+//插入在线链表检查,没有此用户返回真
+bool onlineListAddCheck(char* name)
+{
+    Line* pos = onlineHead;
+    while (pos != NULL)
+    {
+        if (strcmp(name, pos->name) == 0)
+        {
+            return false;
+        }
+        pos = pos->next;
+    }
+    return true;
+}
+
+//确认接收对象
+Line* ConfirmRecipient(char* name)
+{
+    Line* target = onlineHead;
+    while (target != NULL)
+    {
+        if (strcmp(name, target->name) == 0)
+        {
+            return target;
+        }
+        target = target->next;
+    }
+    return  NULL;
 }

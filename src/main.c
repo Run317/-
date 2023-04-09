@@ -1,12 +1,15 @@
 #include "main.h"
 #include "usr.h"
 
+//在线链表头节点
+Line* onlineHead = NULL;
+
 int main(int argc, char* argv[])
 {
     //创建头节点，导入用户信息
     node* local = userInit();
     //创建头节点，存储在线用户信息
-    Line* online = onlineInit();
+    onlineHead = onlineInit();
     //加载用户信息。将本地信息导入到程序
     loadInfo(local);
 
@@ -20,7 +23,7 @@ int main(int argc, char* argv[])
         switch (cmd)
         {
         case 1:
-            userLogin(local, online);
+            userLogin(local);
             break;
         case 2:
             userSignup(local);
@@ -29,6 +32,7 @@ int main(int argc, char* argv[])
             return 0;
         default:
             printf("请输入正确指令\n");
+
         }
     }
 }
