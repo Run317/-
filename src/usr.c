@@ -193,7 +193,7 @@ void* rcv_broadcast(void* arg)
             if (strstr(r_buf, currentUser->name) != NULL)
             {
                 char onlineFlag[64];
-                bzero(onlineFlag, sizeof (onlineFlag));
+                bzero(onlineFlag, sizeof(onlineFlag));
                 sprintf(onlineFlag, "%s Online", currentUser->name);
                 send_broadcast(onlineFlag);
             }
