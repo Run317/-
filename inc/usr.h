@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
-#include <stdbool.h>
 
 // 用户信息结构体
 typedef struct usrInfo
@@ -23,7 +22,7 @@ typedef struct onlineInfo
 
 
 // 用户登录
-int userLogin(node* local);
+int userLogin(node* local, Line* online);
 // 用户注册
 void userSignup(node* local);
 // 初始化节点
@@ -36,19 +35,11 @@ Line* onlineInit(void);
 // 接收别的主机上线的广播，一直接收，服务器
 void* rcv_broadcast(void* head);
 // 发送广播
-int send_broadcast(char* msg);
+void* send_broadcast(void* user);
 //接收信息
 void* rcvMsg(void* user);
-//删除节点
-void onlineListDel(char* name);
 
-//插入在线链表检查
-bool onlineListAddCheck(char* name);
-//在线链表尾插
-void onlineListAdd(Line* new);
 //单独发送
-void sendIndividually(void* arg);
-//确认接收对象
-Line* ConfirmRecipient(char* name);
+void sendIndividually(Line* head);
 
 #endif
