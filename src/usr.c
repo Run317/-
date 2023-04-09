@@ -181,6 +181,7 @@ void* rcv_broadcast(void* arg)
         newUser->userIP = client_addr;
         sscanf(r_buf, "%[^ ]", name);
         sprintf(newUser->name, "%s", name);
+
         //判断广播信息是否是本机发送,如果是本机发送，将本机地址存到当前用户全局变量
         if (strcmp(name, currentUser->name) == 0)
         {
