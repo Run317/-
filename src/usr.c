@@ -193,9 +193,9 @@ void* rcv_broadcast(void* arg)
             if (strstr(r_buf, currentUser->name) != NULL)
             {
                 char onlineFlag[64];
-                bzero(onlineFlag, sizeof (onlineFlag));
+                bzero(onlineFlag, sizeof(onlineFlag));
                 sprintf(onlineFlag, "%s Online", currentUser->name);
-                //                sendto(client_socket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+                send_broadcast(onlineFlag);
             }
             //检测在线用户链表中是否有该用户
             if (onlineListAddCheck(name))
