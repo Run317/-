@@ -46,8 +46,8 @@ void onlineListDel(char* name);
 bool onlineListAddCheck(char* name);
 //在线链表尾插
 void onlineListAdd(Line* new);
-//单独发送
-void sendIndividually(void* arg);
+//单独发送消息
+int sendIndividually(void);
 //确认接收对象
 Line* ConfirmRecipient(char* name);
 

@@ -2,7 +2,7 @@
 #include "usr.h"
 
 //在线链表头节点
-Line* onlineHead = NULL;
+Line* onlineHead;
 
 int main(int argc, char* argv[])
 {
