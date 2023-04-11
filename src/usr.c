@@ -140,7 +140,6 @@ int send_broadcast(char* msg)
 // 接收别的主机上线的广播，一直接收，服务器
 void* rcv_broadcast(void* arg)
 {
-    printf("发送广播");
     // 创建套接字
     int server_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (server_socket == -1)
@@ -199,8 +198,6 @@ void* rcv_broadcast(void* arg)
             //且在线标识符不在在线列表中
             if (onlineListAddCheck(name))
             {
-                printf("接收到onlineFlag\n");
-                printf("%s\n", r_buf);
                 char port[32];
                 bzero(port, sizeof(port));
                 int i;
@@ -209,8 +206,9 @@ void* rcv_broadcast(void* arg)
                     port[i] = r_buf[strlen(name) + 1 + i];
                 }
                 newUser->userIP.sin_port = atoi(port);
+                onlineListAdd(newUser);
             }
-            onlineListAdd(newUser);
+
         }
         //打印用户上线提醒,屏蔽本机信息
         if (strstr(r_buf, "Online") != NULL)
@@ -355,7 +353,6 @@ int sendIndividually(void)
                     return 0;
                 }
                 sendto(sendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&target->userIP, sizeof (target->userIP));
-                printf("%d\n", currentUser->userIP.sin_port);
             }
         }
     }
