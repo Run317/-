@@ -50,5 +50,7 @@ void onlineListAdd(Line* new);
 int sendIndividually(void);
 //确认接收对象
 Line* ConfirmRecipient(char* name);
+//消息群发
+void sendMultiple(void);
 
 #endif

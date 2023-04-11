@@ -189,8 +189,11 @@ void* rcv_broadcast(void* arg)
         //判断广播信息是否是本机发送,如果是本机发送，将本机地址存到当前用户全局变量
         if (strcmp(name, currentUser->name) == 0)
         {
-            currentUser->userIP = client_addr;
-            //            printf("currentUserPort:%d\n", currentUser->userIP.sin_port);
+            if (onlineListAddCheck(name))
+            {
+                currentUser->userIP = client_addr;
+                printf("currentUserPort:%d\n", currentUser->userIP.sin_port);
+            }
         }
         //如果是在线标识符
         if (strstr(r_buf, "onlineFlag") != NULL)
@@ -281,6 +284,7 @@ int userPanel(Line* head, node* user)
             sendIndividually();
             break;
         case 2:
+            sendMultiple();
             break;
         case 3:
             break;
@@ -333,8 +337,8 @@ int sendIndividually(void)
         {
             //遍历链表，从链表中获取发送对象信息
             Line* target = ConfirmRecipient(name);
-            int sendSocket = socket(AF_INET, SOCK_DGRAM, 0);
-            if (sendSocket == -1)
+            int individuallySendSocket = socket(AF_INET, SOCK_DGRAM, 0);
+            if (individuallySendSocket == -1)
             {
                 perror("sendIndividually socket failed");
             }
@@ -352,17 +356,75 @@ int sendIndividually(void)
                     printf("退出成功\n");
                     return 0;
                 }
-                sendto(sendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&target->userIP, sizeof (target->userIP));
+                sendto(individuallySendSocket, msg, strlen(msg) + 1, 0, (struct sockaddr*)&target->userIP, sizeof (target->userIP));
             }
         }
     }
 }
 
+//单独发送文件
+void fileIndividually(char* file)
+{
+
+}
+
+//消息群发
 void sendMultiple(void)
 {
-    char group[512];
+    //显示在线列表
+    //打印表头
+    printf("用户名\t IP\t 端口\n");
+    //遍历链表,显示在线用户
+    Line* pos = onlineHead->next;
+    while (pos != NULL)
+    {
+        printf("%s\t %s\t %d\n", pos->name, inet_ntoa(pos->userIP.sin_addr), pos->userIP.sin_port);
+        pos = pos->next;
+    }
+    //确定发送对象
+    char groupMsg[1024];
+    char group[128];
+    char buf[512];
     bzero(group, sizeof (group));
     printf("请输入发送对象，多个对象之间用“，”隔开例如”a，b，c“\n");
+    printf("输入”cancel“取消发送“\n");
+    scanf("%s", group);
+    if (strcmp(group, "cancel") == 0)
+    {
+        return;
+    }
+    //创建套接字，用于群发消息
+    int multipleSendSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (multipleSendSocket == -1)
+    {
+        perror("sendMultiple socket failed");
+    }
+    printf("消息发送栏：\n");
+    while (1)
+    {
+        int i = 0;
+        Line* sendPos = onlineHead->next;
+        bzero(groupMsg, sizeof (groupMsg));
+        bzero(buf, sizeof (buf));
+        scanf("%s", buf);
+        sprintf(groupMsg, "%s :%s", currentUser->name, buf);
+        if (strcmp(buf, "exit") == 0)
+        {
+            printf("退出成功\n");
+            break;
+        }
+        //实现群发 ：遍历在线链表，链表中有该用户，向该用户发送消息
+        while (sendPos != NULL)
+        {
+            printf("%d\n", i);
+            i++;
+            if (strstr(group, sendPos->name) != NULL)
+            {
+                sendto(multipleSendSocket, groupMsg, strlen(groupMsg) + 1, 0, (struct sockaddr*)&sendPos->userIP, sizeof (sendPos->userIP));
+            }
+            sendPos = sendPos->next;
+        }
+    }
 }
 
 //接收信息
