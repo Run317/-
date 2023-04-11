@@ -180,7 +180,7 @@ void* rcv_broadcast(void* arg)
         bzero(name, sizeof (name));
         // 循环一直接收
         recvfrom(server_socket, r_buf, 1024, 0, (struct sockaddr*)&client_addr, &addr_size);
-        printf("%s\n", r_buf);
+        //        printf("%s\n", r_buf);
         //新建节点插入链表
         Line* newUser = onlineInit();
         newUser->userIP = client_addr;
@@ -197,11 +197,16 @@ void* rcv_broadcast(void* arg)
         if (strstr(r_buf, "onlineFlag") != NULL)
         {
             printf("接收到onlineFlag\n");
+            printf("%s\n", r_buf);
             char port[32];
+            bzero(port, sizeof (port));
             sscanf(r_buf, "%*[^ ]&%[^,]", port);
-            const char* p = port;
-            newUser->userIP.sin_port = atoi(p);
-            printf("%d\n", newUser->userIP.sin_port);
+            printf("123\n");
+
+            //            newUser->userIP.sin_port = atoi(port);
+            printf("%s\n", port);
+            printf("234\n");
+            //            printf("%d\n", newUser->userIP.sin_port);
         }
         //打印用户上线提醒,屏蔽本机信息
         if (strstr(r_buf, "Online") != NULL)
@@ -216,7 +221,6 @@ void* rcv_broadcast(void* arg)
                     char onlineFlag[64];
                     sprintf(onlineFlag, "%s %d,onlineFlag", currentUser->name, currentUser->userIP.sin_port);
                     send_broadcast(onlineFlag);
-                    printf("222%s\n", onlineFlag);
                 }
                 onlineListAdd(newUser);
             }
