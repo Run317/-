@@ -196,17 +196,21 @@ void* rcv_broadcast(void* arg)
         //如果是在线标识符
         if (strstr(r_buf, "onlineFlag") != NULL)
         {
-            printf("接收到onlineFlag\n");
-            printf("%s\n", r_buf);
-            char port[32];
-            bzero(port, sizeof (port));
-            sscanf(r_buf, "%*[^ ]&%[^,]", port);
-            printf("123\n");
-
-            //            newUser->userIP.sin_port = atoi(port);
-            printf("%s\n", port);
-            printf("234\n");
-            //            printf("%d\n", newUser->userIP.sin_port);
+            //且在线标识符不在在线列表中
+            if (onlineListAddCheck(name))
+            {
+                printf("接收到onlineFlag\n");
+                printf("%s\n", r_buf);
+                char port[32];
+                bzero(port, sizeof(port));
+                int i;
+                for (i = 0; i < (strlen(r_buf) - strlen("onlineFlag") - strlen(name) - 2); i++)
+                {
+                    port[i] = r_buf[strlen(name) + 1 + i];
+                }
+                newUser->userIP.sin_port = atoi(port);
+            }
+            onlineListAdd(newUser);
         }
         //打印用户上线提醒,屏蔽本机信息
         if (strstr(r_buf, "Online") != NULL)
